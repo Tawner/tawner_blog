@@ -139,3 +139,4 @@ dmypy.json
 *.jpeg
 *.doc
 settings.py
+uwsgi.*
