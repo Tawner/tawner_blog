@@ -139,4 +139,6 @@ dmypy.json
 *.jpeg
 *.doc
 settings.py
-uwsgi.*
+uwsgi.ini
+uwsgi.log
+uwsgi.pid
