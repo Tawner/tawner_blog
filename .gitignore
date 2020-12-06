@@ -138,6 +138,7 @@ dmypy.json
 *.xlsx
 *.jpeg
 *.doc
+*.exe
 settings.py
 uwsgi.ini
 uwsgi.log
