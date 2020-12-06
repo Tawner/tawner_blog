@@ -215,7 +215,7 @@ class FocusingListAdminView(MethodView):
 
 
 class FocusingInfoView(MethodView):
-    """修改"""
+    """修改、删除"""
     decorators = [admin_login_required]
 
     def put(self, focus_id):

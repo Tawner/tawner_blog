@@ -57,3 +57,13 @@ def decrypt(encrypt_str):
     return data
 
 
+def file_size(size):
+    """计算文件大小"""
+    if size >= 1024 ** 3:  # G
+        return '%.2fG' % (size / (1024 ** 3))
+    elif size >= 1024 ** 2: # M
+        return '%.2fM' % (size / (1024 ** 2))
+    elif size >= 1024:  # KB
+        return '%.2fKB' % (size / 1024)
+    else:  # B
+        return '%.2fB' % size

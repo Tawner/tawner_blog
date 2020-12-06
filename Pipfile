@@ -27,6 +27,9 @@ flask-marshmallow = "*"
 marshmallow-sqlalchemy = "*"
 flask-mail = "*"
 flask = "*"
+flask-restful = "*"
+cryptography = "*"
+requests = "*"
 
 [requires]
 python_version = "3.7"

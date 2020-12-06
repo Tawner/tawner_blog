@@ -28,7 +28,7 @@ class FrontNavigationUrlSchema(BaseMarshmallow):
 class FrontNavigationListSchema(BaseMarshmallow):
     class Meta:
         fields = ("title", "links")
-    links = fields.Nested(FrontNavigationUrlSchema)
+    links = fields.Nested(FrontNavigationUrlSchema, many=True)
 
 
 # FocusingListAdminView
@@ -109,7 +109,7 @@ class NavigationUrlSchema(BaseMarshmallow):
 class NavigationAdminListSchema(BaseMarshmallow):
     class Meta:
         fields = ("title", "sort", "links")
-    links = fields.Nested(NavigationUrlSchema)
+    links = fields.Nested(NavigationUrlSchema, many=True)
 
 
 # NavigationUrlView

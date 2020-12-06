@@ -12,7 +12,7 @@ def admin_login_required(func):
 
 def user_login_required(func):
     def wrapper(*args, **kwargs):
-        if request.current_user:
+        if request.current_user and not request.current_user.is_super:
             return func(*args, **kwargs)
         else:
             abort(401)

@@ -19,7 +19,7 @@ class str_range(object):
         self.argument = argument
 
     def __call__(self, value):
-        if len(value) <= self.low or len(value) >= self.high:
+        if len(value) < self.low or len(value) > self.high:
             error = ('Invalid {arg}: {val}. {arg} length must be within the range {lo} - {hi}'
                      .format(arg=self.argument, val=value, lo=self.low, hi=self.high))
             raise ValueError(error)
@@ -89,5 +89,11 @@ def image_exist(value):
     return True if image else False
 
 
-
+def comment_theme(value):
+    theme = Comment.query.filter(
+        Comment.is_delete == 0,
+        Comment.theme_id.is_(None),
+        Comment.id == value
+    ).first()
+    return True if theme else False
 

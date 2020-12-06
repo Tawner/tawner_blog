@@ -1,5 +1,5 @@
 from flask import Blueprint
-from . import article, upload, category, admin, site, user
+from . import article, upload, category, admin, site, user, comment, donwload, picture, other
 
 
 def blue_print():
@@ -12,6 +12,10 @@ def blue_print():
     category.add_url_rule(api_v1_bp)
     site.add_url_rule(api_v1_bp)
     user.add_url_rule(api_v1_bp)
+    comment.add_url_rule(api_v1_bp)
+    donwload.add_url_rule(api_v1_bp)
+    picture.add_url_rule(api_v1_bp)
+    other.add_url_rule(api_v1_bp)
     return api_v1_bp
 
 

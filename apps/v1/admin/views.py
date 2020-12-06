@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from .marshmallows import *
 from flask import request, abort
-from common.models import *
+from common.models import Admin
 from common.system.login_require import admin_login_required
 from sqlalchemy import or_
 
@@ -11,13 +11,20 @@ class AdminLoginView(MethodView):
     def post(self):
         req_val = AdminLoginParse().load(request.values)
 
-        result = User.check_password(req_val['username'], req_val['password'])
+        result = Admin.login(**req_val)
         if result['status'] == "failure":
             abort(400, description=result['msg'])
-        if not result['user'].is_super:
-            abort(400, description="用户名不存在")
 
         return {"code": 200, "token": result['user'].create_token()}
+
+
+class AdminLogoutView(MethodView):
+    """管理退出登录"""
+    decorators = [admin_login_required]
+
+    def get(self):
+        request.current_user.logout()
+        return {"code": 200, "msg": "注销成功"}
 
 
 class TokenAdminInfoView(MethodView):
@@ -35,15 +42,15 @@ class GetAdminListView(MethodView):
     def get(self):
         req_val = GetAdminListParse().load(request.values)
 
-        query_args = [User.is_delete == 0, User.is_super == 1]
+        query_args = [Admin.is_delete == 0]
         if "word" in req_val.keys():
             query_args.append(or_(
-                User.nickname.like("%" + req_val['word'] + "%"),
-                User.username.like("%" + req_val['word'] + "%")
+                Admin.nickname.like("%" + req_val['word'] + "%"),
+                Admin.username.like("%" + req_val['word'] + "%")
             ))
-        admins = User.qeury.filter(*query_args).paginate(req_val['page'], req_val['rows'])
+        admins = Admin.query.filter(*query_args).paginate(req_val['page'], req_val['rows'])
 
-        page_data = PaginateSchema(admins)
+        page_data = PaginateSchema().dump(admins)
         return {"code": 200, "data": AdminListSchema().dump(admins.items), "page_data": page_data}
 
 
@@ -52,25 +59,25 @@ class AdminInfoView(MethodView):
     decorators = [admin_login_required]
 
     def get(self, admin_id):
-        admin = User.qeury.filter(User.id == admin_id, User.is_super == 1, User.is_delete == 0).first()
+        admin = Admin.query.filter_by(id=admin_id, is_delete=0).first()
         if not admin:
             abort(404, description="没有找到该管理员")
-        return {"code": 200, "data": AdminInfoSchema().load(admin)}
+        return {"code": 200, "data": AdminInfoSchema().dump(admin)}
 
     def put(self, admin_id):
         req_val = UpdateAdminInfoParse().load(request.values)
 
-        if req_val.get("password", None) != req_val.pop("password_", None):
-            abort(400, description="两次密码不一致")
-
-        admin = User.qeury.filter(User.id == admin_id, User.is_super == 1, User.is_delete == 0).first()
+        admin = Admin.query.filter_by(id=admin_id, is_delete=0).first()
         if not admin:
             abort(404, description="没有找到该管理员")
-        admin.update(**req_val)
+        result = admin.update(**req_val)
+        if result['status'] == "failure":
+            abort(400, description=result['msg'])
+
         return {"code": 200, "msg": "修改成功"}
 
     def delete(self, admin_id):
-        admin = User.qeury.filter(User.id == admin_id, User.is_super == 1, User.is_delete == 0).first()
+        admin = Admin.query.filter_by(id=admin_id, is_delete=0).first()
         if not admin:
             abort(404, description="没有找到该管理员")
         admin.delete()
@@ -83,10 +90,8 @@ class AddAdminView(MethodView):
 
     def post(self):
         req_val = AddAdminParse().load(request.values)
-        if req_val['password'] != req_val.pop('_password'):
-            abort(400, description="两次密码不一致")
 
-        result = User.add(**req_val)
+        result = Admin.add(**req_val)
         if result['status'] == "failure":
             abort(400, description=result['msg'])
         return {"code": 200, "msg": "添加成功"}

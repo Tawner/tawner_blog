@@ -43,6 +43,7 @@ class CategoryListAdminSchema(BaseMarshmallow):
     sub = fields.Nested(SubCategorySchema, many=True)
     create_time = fields.DateTime('%Y-%m-%d %H:%M')
 
+
 class CategoryListAdminParse(BaseMarshmallow):
     module = fields.String(validate=[validate.choice(Category.MODULE_TYPE)])
 

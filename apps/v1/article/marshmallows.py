@@ -36,8 +36,25 @@ class ArticleInfoSchema(BaseMarshmallow):
         fields = ("id", "title", "content", "comment", "view", "published_date", "description", "category_id", "image", "category_structure", "tags")
     publish_date = fields.DateTime("%Y-%m-%d %H:%M")
     image = fields.String(attribute="cover.url")
-    category_structure = fields.Nested(CategoryInfoSchema, attribute="category.structure")
-    tags = fields.Nested(TagInfoSchema)
+    category_structure = fields.Nested(CategoryInfoSchema, attribute="category.structure", many=True)
+    tags = fields.Nested(TagInfoSchema, many=True)
+
+
+# ArticleTagListView
+class ArticleTagListSchema(BaseMarshmallow):
+    class Meta:
+        fields = ("id", "name", "count")
+
+
+# TagArticleListView
+class TagArticleListParse(BaseMarshmallow):
+    page = fields.Integer(validate=[validate.positive], missing=1)
+    rows = fields.Integer(validate=[validate.positive], missing=10)
+
+
+class TagArticleListSchema(BaseMarshmallow):
+    class Meta:
+        fields = ("id", "name", "count", "article")
 
 
 # AddArticleView
@@ -60,8 +77,8 @@ class ArticleInfoAdminSchema(BaseMarshmallow):
         fields = ("id", "title", "content", "comment", "view", "recom", "top", "published", "published_date", "description", "cover_id", "category_id", "image", "category_structure", "tags")
     publish_date = fields.DateTime("%Y-%m-%d %H:%M")
     image = fields.String(attribute="cover.url")
-    category_structure = fields.Nested(CategoryInfoSchema, attribute="category.structure")
-    tags = fields.Nested(TagInfoSchema)
+    category_structure = fields.Nested(CategoryInfoSchema, attribute="category.structure", many=True)
+    tags = fields.Nested(TagInfoSchema, many=True)
 
 
 class UpdateArticleInfo(AddArticleParse):
@@ -81,4 +98,19 @@ class ArticleListAdminSchema(BaseMarshmallow):
     category = fields.Nested(CategoryInfoSchema)
 
 
+# TagListAdminView
+class TagListAdminSchema(BaseMarshmallow):
+    class Meta:
+        fields = ("id", "name", "count", "sort")
+
+
+# AddTagView
+class AddTagParse(BaseMarshmallow):
+    name = fields.String(validate=[validate.str_range(0, 128)], required=True)
+    sort = fields.Integer(validate=[validate.positive], missing=20)
+
+
+# TagInfoAdminView
+class UpdateTagInfoParse(AddTagParse):
+    pass
 

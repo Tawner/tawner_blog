@@ -36,7 +36,8 @@ class Article(Base):
             query_args.append(or_(Article.title.like('%' + word + '%'), Article.content.like('%' + word + '%')))
         if category:
             cate = Category.query.get(category)
-            category_ids = [cate.id].extend([lower.id for lower in cate.sub])
+            category_ids = [cate.id]
+            category_ids.extend([lower.id for lower in cate.sub])
             query_args.append(Article.category_id.in_(category_ids))
         if recom:
             query_args.append(Article.recom == True)
@@ -56,6 +57,38 @@ class Tag(Base):
     name = db.Column(db.String(128), comment="标签名")
     sort = db.Column(db.SmallInteger, comment="排序值")
     articles = db.relationship("Article", secondary="article_tag")
+
+    @property
+    def article_all(self):
+        article_list = []
+        for article in self.articles:
+            if article.is_delete == 0:
+                article_list.append(article)
+        article_list.sort(key=lambda x: x.top, reverse=True)
+        return article_list
+
+    @property
+    def count(self):
+        return len(self.article_all)
+
+    def article_list(self, page=1, rows=10):
+        pages = (self.count // rows) + 1 if self.count % rows else self.count // rows
+
+        if page < 1: page = 1
+        if page > pages: page = pages
+
+        has_next = False if page == pages else True
+        has_prev = False if page == 1 else False
+        res = {
+            "page": page,
+            "pages": pages,
+            "rows": rows,
+            "total": self.count,
+            "has_next": has_next,
+            "has_prev": has_prev,
+            "items": self.article_all[(page - 1) * rows: page * rows]
+        }
+        return res
 
 
 class ArticleTag(Base):
@@ -77,11 +110,35 @@ class PictureAlbum(Base):
     cover_id = db.Column(db.Integer, db.ForeignKey("upload.id"), comment="封面")
     cover = db.relationship("Upload", foreign_keys=[cover_id])
 
+    @classmethod
+    def list(cls, page=1, rows=10, word=None, category=None):
+        query_args = [PictureAlbum.is_delete == 0]
+
+        # 条件
+        if word:
+            query_args.append(or_(PictureAlbum.title.like('%' + word + '%'), PictureAlbum.description.like('%' + word + '%')))
+        if category:
+            cate = Category.query.get(category)
+            category_ids = [cate.id].extend([lower.id for lower in cate.sub])
+            query_args.append(PictureAlbum.category_id.in_(category_ids))
+
+        # 查询
+        paginate = PictureAlbum.query.filter(
+            *query_args
+        ).order_by(PictureAlbum.id.desc()).paginate(page, rows)
+        return paginate
+
+    @property
+    def pictures(self):
+        picture_list = []
+        for picture in self.picture:
+            if picture.is_delete == 0:
+                picture_list.append(picture)
+        return picture_list
 
 class Picture(Base):
     __tablename__ = "picture"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    title = db.Column(db.String(128), comment="标题")
     description = db.Column(db.Text, comment="描述")
 
     # 外键关联
@@ -98,12 +155,35 @@ class Download(Base):
     title = db.Column(db.String(128), comment="名称")
     description = db.Column(db.Text, comment="描述")
     version = db.Column(db.String(64), comment="版本")
+    frequency = db.Column(db.Integer, default=0, comment="下载次数")
+    language = db.Column(db.String(128), default="中文", comment="语言")
 
     # 外键关联
     file_id = db.Column(db.Integer, db.ForeignKey("upload.id"))
     file = db.relationship("Upload", foreign_keys=[file_id])
+    category_id = db.Column(db.Integer, db.ForeignKey("category.id"), comment="栏目")
+    category = db.relationship("Category", foreign_keys=[category_id])
     cover_id = db.Column(db.Integer, db.ForeignKey("upload.id"), comment="封面")
     cover = db.relationship("Upload", foreign_keys=[cover_id])
+
+    @classmethod
+    def list(cls, page=1, rows=10, word=None, category=None):
+        query_args = [Download.is_delete == 0]
+
+        # 条件
+        if word:
+            query_args.append(or_(Download.title.like('%' + word + '%'), Download.description.like('%' + word + '%')))
+        if category:
+            cate = Category.query.get(category)
+            category_ids = [cate.id]
+            category_ids.extend([lower.id for lower in cate.sub])
+            query_args.append(Download.category_id.in_(category_ids))
+
+        # 查询
+        paginate = Download.query.filter(
+            *query_args
+        ).order_by(Download.update_time.desc()).paginate(page, rows)
+        return paginate
 
 
 # 栏目
@@ -122,22 +202,29 @@ class Category(Base):
 
     # 外键关联
     upper_id = db.Column(db.Integer, db.ForeignKey("category.id"))
-    upper = db.relationship("Category", foreign_keys=[upper_id], backref="lower")
+
+    @property
+    def upper(self):
+        return Category.query.get(self.upper_id)
 
     def empty(self):
         """是否为空栏目"""
         model = self.MODULE_TYPE[self.module]
         sub = model.query.filter(model.is_delete == 0, model.category_id == self.id).all()
         delete_tag = [lower.is_delete for lower in self.lower]
-        return True if not sub and not all(delete_tag) else False
+        return False if sub or not all(delete_tag) else True
+
+    @property
+    def lower(self):
+        return Category.query.filter_by(upper_id=self.id, is_delete=0).all()
 
     @property
     def sub(self):
-        self.lower.sort(key=lambda x: x.sort)
         lower_list = []
         for lower in self.lower:
             if lower.is_delete == 0:
                 lower_list.append(lower)
+        lower_list.sort(key=lambda x: x.sort)
         return lower_list
 
     @classmethod
@@ -157,7 +244,7 @@ class Category(Base):
         if upper_id is None:
             data.update({"level": 1, "upper_id": None})
         elif upper_id != self.upper_id:
-            upper = Category.query.get(Category.id == upper_id)
+            upper = Category.query.filter_by(id=upper_id).first()
             if upper.module != self.module:
                 return {"status": "failure", "msg": "不允许修改模块"}
             data.update({"level": 2, "upper_id": upper_id})
@@ -165,6 +252,7 @@ class Category(Base):
         db.session.commit()
         return {"stauts": "success", "msg": "修改成功"}
 
+    @property
     def structure(self):
         return [self] if self.level == 1 else [self.upper, self]
 
